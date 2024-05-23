@@ -8,37 +8,44 @@ namespace LessonNetClient
 	{
 		public static void Main(string[] args)
 		{
-			UdpClient(args[0], args[1]);
+			UdpClientSend();
 		}
 
-		public static void UdpClient(string from, string ip) 
+		public static void UdpClientSend()
 		{
-			string messageText;
-			
-			UdpClient udp = new UdpClient();
-			IPEndPoint iPEndPoint = new IPEndPoint(IPAddress.Parse(ip), 12345);
+			UdpClient udpClient = new UdpClient();
+			IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 12345);
+
+			Console.WriteLine("Введите сообщение (или 'Exit' для завершения):");
 
 			while (true)
 			{
-				do
+				string input = Console.ReadLine();
+				if (input.Equals("Exit", StringComparison.OrdinalIgnoreCase))
 				{
-					//Console.Clear();
-					Console.WriteLine("Введите сообщение: ");
-					messageText = Console.ReadLine();
+					SendMessage(udpClient, endPoint, input);
+					break;
+				}
 
-				} while (string.IsNullOrEmpty(messageText));
-
-				Messenge messenge = new Messenge() { Text = messageText, DateTime = DateTime.Now, NicNameFrom = from, NicNameTo = "Server" };
-				string json = messenge.SerializeMessToJson();
-				byte[] data = Encoding.UTF8.GetBytes(json);
-				udp.Send(data, data.Length, iPEndPoint);
+				SendMessage(udpClient, endPoint, input);
 
 				// Получение подтверждения от сервера
 				IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
-				byte[] confirmationBuffer = udp.Receive(ref remoteEP);
+				byte[] confirmationBuffer = udpClient.Receive(ref remoteEP);
 				string confirmationMessage = Encoding.UTF8.GetString(confirmationBuffer);
 				Console.WriteLine($"Сервер ответил: {confirmationMessage}");
 			}
+
+			udpClient.Close();
+			Console.WriteLine("Клиент завершил работу.");
+		}
+
+		private static void SendMessage(UdpClient udpClient, IPEndPoint endPoint, string text)
+		{
+			Messenge msg = new Messenge() { Text = text, DateTime = DateTime.Now, NicNameFrom = "from", NicNameTo = "all" };
+			string json = msg.SerializeMessToJson();
+			byte[] buffer = Encoding.UTF8.GetBytes(json);
+			udpClient.Send(buffer, buffer.Length, endPoint);
 		}
 	}
 }
